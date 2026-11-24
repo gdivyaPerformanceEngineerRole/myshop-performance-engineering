@@ -1,5 +1,5 @@
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 import os
 import psycopg
 from dotenv import load_dotenv
@@ -34,3 +34,21 @@ def get_products():
             rows = cur.fetchall()
             columns = [desc.name for desc in cur.description]
             return [dict(zip(columns, row)) for row in rows]
+
+@app.get("/products/{product_id}")
+def get_product_by_id(product_id: int):
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT * FROM products WHERE product_id = %s",
+                (product_id,)
+            )
+            row = cur.fetchone()
+            if row is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Product not found"
+                )
+
+            columns = [desc.name for desc in cur.description]
+            return dict(zip(columns, row))
