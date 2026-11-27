@@ -4,8 +4,11 @@ from pydantic import BaseModel, Field
 from psycopg_pool import ConnectionPool
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
+from fastapi.responses import FileResponse
+from pathlib import Path
 
 load_dotenv()
+BASE_DIR = Path(__file__).resolve().parent
 
 # Database connection pool
 pool = ConnectionPool(
@@ -81,9 +84,13 @@ def search_products(keyword: str):
                 "SELECT * FROM products WHERE name ILIKE %s",
                 (f"%{keyword}%",)
             )
-            products = cur.fetchall()
 
-    return products
+            rows = cur.fetchall()
+
+            columns = [desc.name for desc in cur.description]
+
+            return [dict(zip(columns, row)) for row in rows]
+   
 class CartItem(BaseModel):
     customer_id: int
     product_id: int
@@ -128,3 +135,32 @@ def add_to_cart(item: CartItem):
                 "cart_id": row[0],
                 "quantity": row[1]
             }
+@app.get("/cart/{customer_id}")
+def view_cart(customer_id: int):
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT
+                    cart.cart_id,
+                    cart.customer_id,
+                    products.name,
+                    products.price,
+                    cart.quantity,
+                    products.price * cart.quantity AS subtotal
+                FROM cart
+                INNER JOIN products
+                ON cart.product_id = products.product_id
+                WHERE cart.customer_id = %s
+            """, (customer_id,))
+
+            rows = cur.fetchall()
+            columns = [desc.name for desc in cur.description]
+
+            return [dict(zip(columns, row)) for row in rows]
+            
+    
+@app.get("/shop")
+def shop():
+    return FileResponse(
+        BASE_DIR / "Frontend" / "index.html"
+    )

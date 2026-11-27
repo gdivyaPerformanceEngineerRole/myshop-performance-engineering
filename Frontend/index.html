@@ -24,6 +24,183 @@
     <h2>Available Products</h2>
 
     <div id="productList"></div>
+    <hr>
+
+<h2>Shopping Cart</h2>
+
+<button id="viewCartButton">View Cart</button>
+
+<div id="cartList"></div>
+
+    <script>
+
+        // Display products
+
+        function displayProducts(products) {
+
+            const productList =
+                document.getElementById("productList");
+
+            productList.textContent = "";
+
+            if (products.length === 0) {
+                productList.textContent = "No products found.";
+                return;
+            }
+
+            products.forEach(product => {
+
+                const item = document.createElement("p");
+
+                item.textContent =
+                    `${product.name} - $${product.price} `;
+
+                const cartButton =
+                    document.createElement("button");
+
+                cartButton.textContent = "Add to Cart";
+
+                cartButton.addEventListener("click", () => {
+                    addToCart(product.product_id);
+                });
+
+                item.appendChild(cartButton);
+
+                productList.appendChild(item);
+
+            });
+        }
+
+
+        // Browse Products
+
+        async function browseProducts() {
+
+            const response = await fetch("/products");
+
+            if (!response.ok) {
+                alert("Failed to load products");
+                return;
+            }
+
+            const products = await response.json();
+
+            displayProducts(products);
+        }
+
+
+        // Search Products
+
+        async function searchProducts() {
+
+            const keyword = document
+                .getElementById("searchBox").value.trim();
+
+            if (!keyword) {
+                document.getElementById("productList")
+                    .textContent = "Please enter a product name.";
+                return;
+            }
+
+            const response = await fetch(
+                `/search?keyword=${encodeURIComponent(keyword)}`
+            );
+
+            if (!response.ok) {
+                alert("Search failed");
+                return;
+            }
+
+            const products = await response.json();
+
+            displayProducts(products);
+        }
+
+
+        // Add to Cart
+
+        async function addToCart(productId) {
+
+            const response = await fetch("/cart", {
+
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+                    customer_id: 1,
+                    product_id: productId,
+                    quantity: 1
+                })
+            });
+
+            if (!response.ok) {
+                alert("Failed to add product to cart");
+                return;
+            }
+
+            const result = await response.json();
+
+            alert(result.message);
+        }
+
+
+        // Button Event Listeners
+
+        document.getElementById("browseButton")
+            .addEventListener("click", browseProducts);
+
+      document.getElementById("searchButton")
+    .addEventListener("click", searchProducts);
+            async function viewCart() {
+
+    const response = await fetch("/cart/1");
+
+    const cartList = document.getElementById("cartList");
+
+    if (!response.ok) {
+        cartList.textContent = "Failed to load cart.";
+        return;
+    }
+
+    const cartItems = await response.json();
+
+    cartList.textContent = "";
+
+    if (cartItems.length === 0) {
+        cartList.textContent = "Your cart is empty.";
+        return;
+    }
+
+    let total = 0;
+
+    cartItems.forEach(product => {
+
+        const item = document.createElement("p");
+
+        item.textContent =
+            `${product.name} | Quantity: ${product.quantity} | Subtotal: $${product.subtotal}`;
+
+        cartList.appendChild(item);
+
+        total += Number(product.subtotal);
+    });
+
+    const totalAmount = document.createElement("h3");
+
+    totalAmount.textContent =
+        `Total Amount: $${total.toFixed(2)}`;
+
+    cartList.appendChild(totalAmount);
+}
+
+document.getElementById("viewCartButton")
+    .addEventListener("click", viewCart);
+
+
+    </script>
 
 </body>
 </html>
